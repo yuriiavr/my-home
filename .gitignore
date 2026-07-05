@@ -1,0 +1,22 @@
+# PlatformIO збірки
+firmware/.pio/
+.pio/
+
+# СЕКРЕТИ: WiFi/MQTT/OTA/ключ кондиціонера — НІКОЛИ не комітити!
+# (скопіюй відповідний *.example.* файл і заповни)
+firmware/src/secrets.h
+hub/home_secrets.py
+hub/cloud/config.js
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime-дані хаба (правила живуть на платі, це лише локальний кеш)
+hub/automations.json
+
+# IDE / система
+.vscode/
+Thumbs.db
+.DS_Store

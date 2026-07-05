@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Розумний дім</title>
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0a0c10">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Розумний дім">
+  <link rel="apple-touch-icon" href="/static/icon-180.png">
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="root">
+
+    <!-- ── Бічна панель (десктоп) ── -->
+    <aside class="sidebar">
+      <div class="logo-row">
+        <div class="logo-badge" id="logoIcon"></div>
+        <div class="logo-title">Розумний дім</div>
+      </div>
+      <nav class="side-nav" id="sideNav"></nav>
+      <div class="side-bottom">
+        <button class="theme-btn" id="themeBtnSide"></button>
+      </div>
+    </aside>
+
+    <!-- ── Основна частина ── -->
+    <main class="main">
+      <div class="content">
+
+        <header class="page-head">
+          <div>
+            <div class="greet" id="greet"></div>
+            <h1 class="page-title" id="pageTitle">Огляд дому</h1>
+          </div>
+          <div class="head-right">
+            <div class="clock-card">
+              <span class="clock" id="clock">--:--</span>
+              <div class="clock-sep"></div>
+              <div class="clock-date">
+                <div class="weekday" id="weekday"></div>
+                <div class="datestr" id="datestr"></div>
+              </div>
+            </div>
+            <button class="theme-top" id="themeBtnTop"></button>
+          </div>
+        </header>
+
+        <div id="view-devices">
+          <div class="stats" id="stats"></div>
+          <section id="acCard"></section>
+          <h2 class="grid-title">Усі пристрої</h2>
+          <div class="grid" id="grid"></div>
+        </div>
+
+        <div id="view-auto" style="display:none">
+          <div id="autoRoot"></div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- ── Нижня навігація (мобільна) ── -->
+    <nav class="bottom-nav" id="bottomNav"></nav>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
