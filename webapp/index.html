@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Розумний дім</title>
-  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="manifest" href="./manifest.webmanifest">
   <meta name="theme-color" content="#0a0c10">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Розумний дім">
-  <link rel="apple-touch-icon" href="/static/icon-180.png">
-  <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <div class="root">
@@ -42,6 +42,7 @@
             <h1 class="page-title" id="pageTitle">Огляд дому</h1>
           </div>
           <div class="head-right">
+            <div class="status-pill" id="statusPill"><span class="dot"></span><span>Підключення…</span></div>
             <div class="clock-card">
               <span class="clock" id="clock">--:--</span>
               <div class="clock-sep"></div>
@@ -57,7 +58,7 @@
         <div id="view-devices">
           <div class="stats" id="stats"></div>
           <section id="acCard"></section>
-          <h2 class="grid-title">Усі пристрої</h2>
+          <h2 class="grid-title" id="gridTitle">Усі пристрої</h2>
           <div class="grid" id="grid"></div>
         </div>
 
@@ -72,6 +73,10 @@
     <nav class="bottom-nav" id="bottomNav"></nav>
   </div>
 
-  <script src="/static/app.js"></script>
+  <!-- MQTT-бібліотека (потрібна лише хмарному режиму; локально помилка завантаження нешкідлива) -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Дані брокера (лише хмара): файла нема локально — 404 нешкідливий, режим буде HTTP -->
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>

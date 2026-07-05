@@ -6,7 +6,7 @@ firmware/.pio/
 # (скопіюй відповідний *.example.* файл і заповни)
 firmware/src/secrets.h
 hub/home_secrets.py
-hub/cloud/config.js
+deploy-cloud/config.js
 
 # Python
 __pycache__/

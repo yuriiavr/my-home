@@ -10,7 +10,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from automations import Engine
@@ -103,9 +102,7 @@ def set_automations(rules: dict):
 
 
 # ── Веб-інтерфейс ───────────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
-
-
-@app.get("/")
-def index():
-    return FileResponse(BASE / "static" / "index.html")
+# Єдиний вебзастосунок живе у <корінь проєкту>/webapp (спільний для хаба,
+# плати та хмари). Монтуємо ПІСЛЯ /api-маршрутів, щоб вони мали пріоритет;
+# html=True віддає index.html на "/" і робить відносні ./style.css робочими.
+app.mount("/", StaticFiles(directory=BASE.parent / "webapp", html=True), name="webapp")

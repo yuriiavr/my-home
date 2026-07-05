@@ -1,4 +1,22 @@
-/* ═══ Home Hub — логіка (дизайн: Home Hub.dc.html) ═══ */
+/* ═══ Розумний дім — ЄДИНИЙ вебзастосунок (дизайн: Home Hub.dc.html) ═══
+   Один і той самий код працює у трьох місцях:
+     • Python-хаб (hub/main.py)        → HTTP-режим (/api)
+     • Плата ESP32 (firmware/data)     → HTTP-режим (/api)
+     • Хмара (Cloudflare Pages тощо)   → MQTT-режим (WSS-брокер)
+
+   Вибір режиму — автоматично при старті:
+     є window.HUB_CONFIG (файл config.js) і завантажена бібліотека mqtt
+       → MQTT-режим (керування звідусіль через брокер);
+     інакше → HTTP-режим (локальний /api на хабі чи платі).
+
+   ⚠️ БЕЗПЕКА (тільки хмара): config.js з даними брокера НЕ лежить у git
+   (шаблон — deploy-cloud/config.example.js) і при деплої видимий кожному,
+   хто відкриє сайт. Створи окремий обмежений логін брокера для веб-клієнта
+   і не публікуй адресу сайту. */
+
+// ── Конфігурація транспорту ──
+const CONFIG = window.HUB_CONFIG || {};
+const USE_MQTT = !!(CONFIG.url && window.mqtt);
 
 // ── Іконки (lucide, як у дизайні) ──
 const ICONS = {
@@ -52,12 +70,19 @@ const EMOJI_ICON = { '❄️':'snowflake', '📺':'tv', '💡':'lightbulb', '☕
 const S = {
   theme: localStorage.getItem('hub_theme') || 'dark',
   tab: 'devices',
-  devices: [],
-  rules: null,
+  devices: [],        // пристрої: HTTP — усі з /api/devices; MQTT — лише кондиціонер
+  rules: null,        // правила автоматизацій, або null поки не завантажені
   acOpen: false,
-  editIdx: null,     // який розклад розгорнуто на редагування
+  editIdx: null,      // який розклад розгорнуто на редагування
   dragging: false,
+  lastEditAt: 0,      // час останньої локальної правки правил (MQTT: щоб retained не затирав)
+  conn: 'connecting', // 'connecting' | 'connected' | 'disconnected'
+  boardStatus: null,  // MQTT: 'online' | 'offline' | null; HTTP: завжди null
 };
+
+// Запасний список пристроїв для редактора розкладів (MQTT-режим до першого стану).
+const FALLBACK_DEVICES = [{ id: 'ac_living', name: 'Кондиціонер', room: 'Вітальня' }];
+const editDevices = () => S.devices.length ? S.devices : FALLBACK_DEVICES;
 
 const $ = s => document.querySelector(s);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -80,7 +105,7 @@ function applyTheme() {
 function toggleTheme() {
   S.theme = S.theme === 'dark' ? 'light' : 'dark';
   localStorage.setItem('hub_theme', S.theme);
-  applyTheme(); renderAll();
+  applyTheme(); renderAll(); renderStatus();
 }
 
 // ── Навігація ──
@@ -97,7 +122,7 @@ function showTab(k) {
   $('#view-auto').style.display = k === 'auto' ? '' : 'none';
   $('#pageTitle').textContent = k === 'devices' ? 'Огляд дому' : 'Автоматизації';
   renderNav();
-  if (k === 'auto') loadRules();
+  if (k === 'auto') { NET.refreshRules(); renderAuto(); }
 }
 
 // ── Годинник ──
@@ -112,44 +137,207 @@ function tickClock() {
   $('#greet').innerHTML = svg(h >= 6 && h < 18 ? 'sun' : 'moon', 15, THEMES[S.theme].accent) + `<span>${greeting}</span>`;
 }
 
-// ── API ──
-async function loadDevices() {
-  if (S.dragging) return;
-  try {
-    const r = await fetch('/api/devices');
-    S.devices = await r.json();
-    renderAll();
-  } catch (e) {}
+/* ═══ ШАР ДАНИХ ═══════════════════════════════════════════════════════════
+   Інтерфейс транспорту (єдина точка, де режими відрізняються):
+     start()               — запустити зв'язок (poll або MQTT-підключення)
+     toggleDevice(id)      — пристрій уже перемкнуто оптимістично в S
+     setDevice(id, ch)     — зміни вже застосовано оптимістично в S
+     pushRules()           — надіслати ПОВНИЙ S.rules (викликає saveRules)
+     refreshRules()        — підтягнути правила при відкритті вкладки
+   Все, що вище/нижче цього блоку — СПІЛЬНЕ для обох режимів.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+function setConn(c) {
+  if (S.conn === c) return;
+  S.conn = c;
+  renderStatus();
 }
-async function toggleDev(id) {
+
+// Оптимістичні дії з UI (спільні), делегують у транспорт:
+function toggleDev(id) {
   const d = S.devices.find(x => x.id === id);
   if (d) { d.state.on = !d.state.on; renderAll(); }
-  await fetch(`/api/devices/${id}/toggle`, { method:'POST' });
-  loadDevices();
+  NET.toggleDevice(id);
 }
-async function setDev(id, changes) {
+function setDev(id, changes) {
   const d = S.devices.find(x => x.id === id);
   if (d) { Object.assign(d.state, changes); renderAll(); }
-  await fetch(`/api/devices/${id}/set`, {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(changes),
-  });
+  NET.setDevice(id, changes);
 }
-async function loadRules() {
-  try {
-    const r = await fetch('/api/automations');
-    S.rules = await r.json();
-    renderAuto();
-  } catch (e) {}
-}
+// Автозбереження правил з дебаунсом 400 мс (спільне для обох режимів).
 let saveTimer = null;
 function saveRules() {
+  S.lastEditAt = Date.now();
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    fetch('/api/automations', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(S.rules),
-    });
-  }, 400);
+  saveTimer = setTimeout(() => { if (S.rules) NET.pushRules(); }, 400);
 }
+
+// ── HTTP-транспорт (локально: Python-хаб або сама плата) ──
+function makeHttpTransport() {
+  async function loadDevices() {
+    if (S.dragging) return;
+    try {
+      const r = await fetch('/api/devices');
+      if (!r.ok) throw new Error();
+      S.devices = await r.json();
+      setConn('connected');
+      renderAll();
+    } catch (e) { setConn('disconnected'); }
+  }
+  return {
+    mode: 'http',
+    start() { loadDevices(); setInterval(loadDevices, 5000); },
+    toggleDevice(id) {
+      fetch(`/api/devices/${id}/toggle`, { method:'POST' })
+        .then(() => loadDevices())
+        .catch(() => setConn('disconnected'));
+    },
+    setDevice(id, changes) {
+      fetch(`/api/devices/${id}/set`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(changes),
+      }).catch(() => setConn('disconnected'));
+    },
+    pushRules() {
+      fetch('/api/automations', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(S.rules),
+      }).catch(() => {});
+    },
+    async refreshRules() {
+      try {
+        const r = await fetch('/api/automations');
+        S.rules = await r.json();
+        if (S.tab === 'auto') renderAuto();
+      } catch (e) {}
+    },
+  };
+}
+
+// ── MQTT-транспорт (звідусіль: через хмарний брокер по WSS) ──
+function makeMqttTransport() {
+  const T_STATE     = `${CONFIG.base}/ac/state`;    // ← стан кондиціонера (JSON) від плати
+  const T_STATUS    = `${CONFIG.base}/status`;      // ← "online" / "offline" (LWT плати)
+  const T_CMD       = `${CONFIG.base}/ac/cmd`;      // → команди до плати (JSON)
+  const T_RULES     = `${CONFIG.base}/rules`;       // ← правила (retained JSON) від плати
+  const T_RULES_SET = `${CONFIG.base}/rules/set`;   // → збереження правил (повний JSON, НЕ retained)
+  let client = null;
+
+  // Пристрій-кондиціонер із payload ac/state — та сама форма, що дає /api/devices.
+  function buildAcDevice(st) {
+    return {
+      id: 'ac_living', kind: 'ac', name: 'Кондиціонер', icon: '❄️', room: 'Вітальня',
+      state: {
+        on: !!st.on, temp: st.temp, mode: st.mode, fan: st.fan,
+        swing: st.swing, swing_h: st.swing_h,
+        quiet: st.quiet, eco: st.eco, sleep: st.sleep, xfan: st.xfan,
+        health: st.health, light: st.light, turbo: st.turbo,
+        room_temp: st.room_temp,
+      },
+    };
+  }
+
+  function onMessage(topic, payload) {
+    const text = payload.toString();
+    if (topic === T_STATUS) {
+      const v = text.trim();
+      if (v === 'online' || v === 'offline') S.boardStatus = v;
+      renderStatus();
+      if (S.tab === 'auto') renderAuto();  // оновити примітку про офлайн-плату
+      return;
+    }
+    if (topic === T_STATE) {
+      try {
+        const st = JSON.parse(text);
+        S.devices = [buildAcDevice(st)];
+        if (!S.dragging) renderAll();      // не перемальовуємо під час перетягування
+      } catch (e) { /* некоректний payload — ігноруємо, без логів */ }
+      return;
+    }
+    if (topic === T_RULES) {
+      // Канонічні правила з плати (retained). Не застосовуємо, якщо користувач
+      // редагував правила протягом останніх 3 с — щоб не затерти зміни посеред
+      // редагування (echo прийде після дебаунсу збереження).
+      if (Date.now() - S.lastEditAt < 3000) return;
+      try {
+        const rules = JSON.parse(text);
+        if (rules && typeof rules === 'object') {
+          S.rules = rules;
+          if (S.tab === 'auto' && !S.dragging) renderAuto();
+        }
+      } catch (e) { /* некоректний payload — ігноруємо */ }
+      return;
+    }
+  }
+
+  function publish(topic, obj, opts) {
+    if (!client || S.conn !== 'connected') return;
+    try { client.publish(topic, JSON.stringify(obj), opts || { qos: 0 }); } catch (e) {}
+  }
+
+  return {
+    mode: 'mqtt',
+    start() {
+      setConn('connecting');
+      client = mqtt.connect(CONFIG.url, {
+        username: CONFIG.username,
+        password: CONFIG.password,
+        clientId: 'web_' + Math.random().toString(16).slice(2, 10),
+        clean: true,
+        reconnectPeriod: 3000,   // авто-перепідключення кожні 3 с
+        connectTimeout: 15000,
+        keepalive: 30,
+      });
+      client.on('connect', () => {
+        setConn('connected');
+        client.subscribe([T_STATE, T_STATUS, T_RULES], { qos: 0 });
+      });
+      client.on('reconnect', () => setConn('connecting'));
+      client.on('close',     () => setConn('disconnected'));
+      client.on('offline',   () => setConn('disconnected'));
+      client.on('error',     () => setConn('disconnected')); // без логів секретів
+      client.on('message', onMessage);
+    },
+    toggleDevice(id) {
+      // Стан уже перемкнуто оптимістично — публікуємо НОВЕ значення.
+      const d = S.devices.find(x => x.id === id);
+      publish(T_CMD, { power: (d ? d.state.on : true) ? 'on' : 'off' });
+    },
+    setDevice(id, changes) {
+      // Ключ 'on' (наприклад при виборі режиму) → 'power' для плати.
+      const cmd = {};
+      for (const [k, v] of Object.entries(changes)) {
+        if (k === 'on') cmd.power = v ? 'on' : 'off';
+        else cmd[k] = v;
+      }
+      publish(T_CMD, cmd);
+    },
+    pushRules() { publish(T_RULES_SET, S.rules, { qos: 1, retain: false }); },
+    refreshRules() { /* правила приходять retained-повідомленням самі */ },
+  };
+}
+
+const NET = USE_MQTT ? makeMqttTransport() : makeHttpTransport();
+
+// ── Статус-пілл підключення ──
+function renderStatus() {
+  const pill = $('#statusPill');
+  if (!pill) return;
+  let emoji, text;
+  if (NET.mode === 'http') {
+    if (S.conn === 'connected')        { emoji = '🟢'; text = 'Локально'; }
+    else if (S.conn === 'connecting')  { emoji = '🟡'; text = 'Підключення…'; }
+    else                               { emoji = '🔴'; text = "Немає зв'язку"; }
+  } else {
+    if (S.conn === 'connected') {
+      if (S.boardStatus === 'online')       { emoji = '🟢'; text = "На зв'язку"; }
+      else if (S.boardStatus === 'offline') { emoji = '🔴'; text = 'Плата офлайн'; }
+      else                                  { emoji = '🟡'; text = 'Підключення…'; } // ще без статусу
+    } else if (S.conn === 'connecting')     { emoji = '🟡'; text = 'Підключення…'; }
+    else                                    { emoji = '🔴'; text = "Немає зв'язку"; }
+  }
+  pill.innerHTML = `<span aria-hidden="true">${emoji}</span><span>${text}</span>`;
+}
+
+/* ═══ Далі — СПІЛЬНИЙ інтерфейс (однаковий для HTTP і MQTT) ═══ */
 
 // ── Пристрої: статистика + AC + сітка ──
 const acDev = () => S.devices.find(d => d.kind === 'ac');
@@ -165,7 +353,7 @@ function renderStats() {
     <div class="stat"><div class="stat-icon">${svg('activity',20,t.accent)}</div>
       <div><div class="stat-label">Активні</div><div class="stat-value">${on} / ${S.devices.length}</div></div></div>
     <div class="stat"><div class="stat-icon">${svg('snowflake',20,t.accent)}</div>
-      <div><div class="stat-label">Кондиціонер</div><div class="stat-text"><span class="dot" style="background:${acOn?t.on:t.border2}"></span>${acOn ? `${MODE_LABEL[ac.state.mode]||''} · ${ac.state.temp}°` : 'Вимкнений'}</div></div></div>`;
+      <div><div class="stat-label">Кондиціонер</div><div class="stat-text"><span class="dot" style="background:${acOn?t.on:t.border2}"></span>${acOn ? `${MODE_LABEL[ac.state.mode]||''} · ${ac.state.temp}°` : (ac ? 'Вимкнений' : 'Очікую стан…')}</div></div></div>`;
 }
 
 function chip(label, active, onclick, iconName) {
@@ -188,7 +376,35 @@ function renderAcCard() {
   const t = THEMES[S.theme];
   const ac = acDev();
   const el = $('#acCard');
-  if (!ac) { el.innerHTML = ''; return; }
+
+  // Поки стан не прийшов (перший poll / перший ac/state) — картка очікування.
+  if (!ac) {
+    el.innerHTML = `
+    <section class="card">
+      <div class="card-head">
+        <div class="card-id">
+          <div class="card-icon">${svg('snowflake',26,t.faint)}</div>
+          <div>
+            <div class="card-title">Кондиціонер</div>
+            <div class="card-sub">Очікую стан…</div>
+          </div>
+        </div>
+        <button class="power-btn" disabled style="opacity:.55;cursor:default">${svg('power',16,t.muted)}<span>—</span></button>
+      </div>
+      <div class="ac-body">
+        <div class="ac-target">
+          <div class="ac-target-num">--<span class="deg">°</span></div>
+          <div class="ac-target-cap">Ціль</div>
+        </div>
+        <div class="slider-zone">
+          ${sliderHTML('ac-temp', 24, 16, 30, { dim: true })}
+          <div class="slider-scale"><span>16°</span><span>30°</span></div>
+        </div>
+      </div>
+    </section>`;
+    return; // слайдери не прив'язуємо у стані очікування
+  }
+
   const s = ac.state;
   const on = s.on;
 
@@ -250,7 +466,11 @@ function toggleAcExtra() { S.acOpen = !S.acOpen; renderAcCard(); }
 
 function renderGrid() {
   const t = THEMES[S.theme];
-  $('#grid').innerHTML = S.devices.filter(d => d.kind !== 'ac').map(d => {
+  const others = S.devices.filter(d => d.kind !== 'ac');
+  // Якщо крім кондиціонера пристроїв немає (MQTT-режим) — ховаємо заголовок сітки.
+  const gt = $('#gridTitle');
+  if (gt) gt.style.display = others.length ? '' : 'none';
+  $('#grid').innerHTML = others.map(d => {
     const on = d.state.on;
     const ic = EMOJI_ICON[d.icon] || 'power';
     return `
@@ -270,14 +490,29 @@ function renderGrid() {
 
 // ── Автоматизації ──
 function deviceName(id) {
-  const d = S.devices.find(x => x.id === id);
+  const d = S.devices.find(x => x.id === id) || FALLBACK_DEVICES.find(x => x.id === id);
   return d ? `${d.name} · ${d.room}` : id;
 }
 
 function renderAuto() {
   const t = THEMES[S.theme];
   const el = $('#autoRoot');
-  if (!S.rules) { el.innerHTML = '<div class="empty-note">Завантаження…</div>'; return; }
+  const offline = S.boardStatus === 'offline';  // можливо лише в MQTT-режимі
+
+  // Правила ще не завантажені.
+  if (!S.rules) {
+    el.innerHTML = offline
+      ? `<div class="empty-note">Плата зараз офлайн — для редагування правил вона має бути на зв'язку.<br>Щойно плата з'явиться онлайн, правила завантажаться сюди автоматично.</div>`
+      : '<div class="empty-note">Завантаження правил…</div>';
+    return;
+  }
+
+  // Правила є, але плата офлайн (MQTT) — попереджаємо про збереження.
+  const warn = offline ? `
+  <section class="auto-card" style="padding:16px 20px">
+    <div class="card-sub" style="margin:0">🔴 Плата зараз офлайн — збереження змін спрацює, лише коли вона знову буде на зв'язку.</div>
+  </section>` : '';
+
   const c = S.rules.climate || {};
   const scheds = S.rules.schedules || [];
 
@@ -324,7 +559,7 @@ function renderAuto() {
     </div>${editor}`;
   }).join('');
 
-  el.innerHTML = `
+  el.innerHTML = `${warn}
   <section class="auto-card">
     <div class="card-head">
       <div class="card-id">
@@ -375,7 +610,7 @@ function schedEditor(r, i) {
   const pad = n => String(n).padStart(2, '0');
   const hourOpts = Array.from({length:24},(_,h)=>`<option value="${pad(h)}" ${pad(h)===hh?'selected':''}>${pad(h)}</option>`).join('');
   const minOpts = Array.from({length:60},(_,m)=>`<option value="${pad(m)}" ${pad(m)===mm?'selected':''}>${pad(m)}</option>`).join('');
-  const devOpts = S.devices.map(d=>`<option value="${d.id}" ${r.device===d.id?'selected':''}>${esc(d.name)} · ${esc(d.room)}</option>`).join('');
+  const devOpts = editDevices().map(d=>`<option value="${d.id}" ${r.device===d.id?'selected':''}>${esc(d.name)} · ${esc(d.room)}</option>`).join('');
   const st = r.set || {};
   const isOff = r.action === 'off';
   const modeOpts = MODES.map(([k,l])=>`<option value="${k}" ${st.mode===k?'selected':''}>${l}</option>`).join('');
@@ -406,14 +641,13 @@ function schedEditor(r, i) {
   </div>`;
 }
 
-function climToggle() { S.rules.climate.enabled = !S.rules.climate.enabled; saveRules(); renderAuto(); }
-function climSet(k, v) { S.rules.climate[k] = v; saveRules(); renderAuto(); }
+function climToggle() { (S.rules.climate ??= {}).enabled = !S.rules.climate.enabled; saveRules(); renderAuto(); }
+function climSet(k, v) { (S.rules.climate ??= {})[k] = v; saveRules(); renderAuto(); }
 function schedToggle(i) { const r = S.rules.schedules[i]; r.enabled = r.enabled === false; saveRules(); renderAuto(); }
 function schedDel(i) { S.rules.schedules.splice(i, 1); if (S.editIdx === i) S.editIdx = null; saveRules(); renderAuto(); }
 function schedEdit(i) { S.editIdx = S.editIdx === i ? null : i; renderAuto(); }
 function schedAdd() {
-  const ac = acDev();
-  (S.rules.schedules ??= []).push({ enabled:true, time:'08:00', device: ac ? ac.id : (S.devices[0]||{}).id, action:'on', set:{ mode:'cool', temp:24, fan:0 } });
+  (S.rules.schedules ??= []).push({ enabled:true, time:'08:00', device:(acDev() || editDevices()[0]).id, action:'on', set:{ mode:'cool', temp:24, fan:0 } });
   S.editIdx = S.rules.schedules.length - 1;
   saveRules(); renderAuto();
 }
@@ -468,7 +702,7 @@ function sliderCommit(el) {
   if (v == null) return;
   const id = el.dataset.slider;
   if (id === 'ac-temp') { const ac = acDev(); if (ac) setDev(ac.id, { temp: v }); }
-  else if (id.startsWith('clim-')) { S.rules.climate[id.slice(5)] = v; saveRules(); renderAuto(); }
+  else if (id.startsWith('clim-')) { if (!S.rules) return; (S.rules.climate ??= {})[id.slice(5)] = v; saveRules(); renderAuto(); }
 }
 
 // ── Рендер усього ──
@@ -476,7 +710,7 @@ function renderAll() {
   renderStats();
   renderAcCard();
   renderGrid();
-  if (S.tab === 'auto' && S.rules) renderAuto();
+  if (S.tab === 'auto') renderAuto();
 }
 
 // ── Старт ──
@@ -485,7 +719,8 @@ $('#themeBtnSide').onclick = toggleTheme;
 $('#themeBtnTop').onclick = toggleTheme;
 applyTheme();
 renderNav();
+renderStatus();
+renderAll();          // одразу показуємо картку в стані «Очікую стан…»
 tickClock();
 setInterval(tickClock, 1000);
-loadDevices();
-setInterval(loadDevices, 5000);
+NET.start();          // HTTP: poll /api кожні 5 с; MQTT: підключення до брокера

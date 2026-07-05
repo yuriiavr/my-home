@@ -288,6 +288,15 @@ body {
 .num-in { width: 72px; }
 .empty-note { text-align: center; padding: 34px 16px; color: var(--muted); font-size: 14px; }
 
+/* ── Статус-пілл підключення (шапка) ── */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px; align-self: center;
+  padding: 9px 15px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+  white-space: nowrap; background: var(--panel); border: 1px solid var(--border);
+  color: var(--muted); box-shadow: var(--shadow); transition: color .2s, border-color .2s;
+}
+.status-pill .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
 /* ── Нижня навігація ── */
 .bottom-nav { display: none; }
 
