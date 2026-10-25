@@ -18,58 +18,43 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <div class="root">
+  <div class="phone">
 
-    <!-- ── Бічна панель (десктоп) ── -->
-    <aside class="sidebar">
-      <div class="logo-row">
-        <div class="logo-badge" id="logoIcon"></div>
-        <div class="logo-title">Розумний дім</div>
-      </div>
-      <nav class="side-nav" id="sideNav"></nav>
-      <div class="side-bottom">
-        <button class="theme-btn" id="themeBtnSide"></button>
-      </div>
-    </aside>
-
-    <!-- ── Основна частина ── -->
-    <main class="main">
-      <div class="content">
-
-        <header class="page-head">
-          <div>
-            <div class="greet" id="greet"></div>
-            <h1 class="page-title" id="pageTitle">Огляд дому</h1>
-          </div>
-          <div class="head-right">
-            <div class="status-pill" id="statusPill"><span class="dot"></span><span>Підключення…</span></div>
-            <div class="clock-card">
-              <span class="clock" id="clock">--:--</span>
-              <div class="clock-sep"></div>
-              <div class="clock-date">
-                <div class="weekday" id="weekday"></div>
-                <div class="datestr" id="datestr"></div>
-              </div>
-            </div>
-            <button class="theme-top" id="themeBtnTop"></button>
-          </div>
-        </header>
-
-        <div id="view-devices">
-          <div class="stats" id="stats"></div>
-          <section id="acCard"></section>
-          <h2 class="grid-title" id="gridTitle">Усі пристрої</h2>
-          <div class="grid" id="grid"></div>
+    <!-- ── Лоудер підключення (перекриває все до першого стану) ── -->
+    <div class="loader" id="loader">
+      <div class="loader-spin">
+        <span class="hub-ring"></span>
+        <span class="hub-ring d2"></span>
+        <svg class="hub-rot" width="96" height="96" viewBox="0 0 96 96">
+          <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="5"></circle>
+          <circle cx="48" cy="48" r="40" fill="none" stroke="#5b8def" stroke-width="5" stroke-linecap="round" stroke-dasharray="70 251"></circle>
+        </svg>
+        <div class="hub-wifi">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"></path><path d="M2 8.82a15 15 0 0 1 20 0"></path><path d="M5 12.859a10 10 0 0 1 14 0"></path><path d="M8.5 16.429a5 5 0 0 1 7 0"></path></svg>
         </div>
-
-        <div id="view-auto" style="display:none">
-          <div id="autoRoot"></div>
-        </div>
-
       </div>
-    </main>
+      <div class="loader-text">
+        <div class="loader-title">Підключення до мережі</div>
+        <div class="loader-msg" id="loaderMsg">Пошук хаба…</div>
+      </div>
+    </div>
 
-    <!-- ── Нижня навігація (мобільна) ── -->
+    <div class="scroll">
+
+      <!-- ── Екран: Дім ── -->
+      <main id="view-home" class="view">
+        <div class="info-cards" id="infoCards"></div>
+        <section id="acCard"></section>
+        <div id="quickAccess"></div>
+      </main>
+
+      <!-- ── Екран: Автоматизації ── -->
+      <main id="view-auto" class="view" style="display:none">
+        <div id="autoRoot"></div>
+      </main>
+    </div>
+
+    <!-- ── Нижня навігація ── -->
     <nav class="bottom-nav" id="bottomNav"></nav>
   </div>
 

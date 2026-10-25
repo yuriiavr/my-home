@@ -1,4 +1,4 @@
-/* ═══ Розумний дім — ЄДИНИЙ вебзастосунок (дизайн: Home Hub.dc.html) ═══
+/* ═══ Розумний дім — ЄДИНИЙ вебзастосунок (мобільний дизайн) ═══
    Один і той самий код працює у трьох місцях:
      • Python-хаб (hub/main.py)        → HTTP-режим (/api)
      • Плата ESP32 (firmware/data)     → HTTP-режим (/api)
@@ -18,29 +18,34 @@
 const CONFIG = window.HUB_CONFIG || {};
 const USE_MQTT = !!(CONFIG.url && window.mqtt);
 
-// ── Іконки (lucide, як у дизайні) ──
+// ── Іконки (lucide) ──
 const ICONS = {
-  house: [['path',{d:'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8'}],['path',{d:'M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'}]],
-  grid: [['rect',{width:7,height:7,x:3,y:3,rx:1}],['rect',{width:7,height:7,x:14,y:3,rx:1}],['rect',{width:7,height:7,x:14,y:14,rx:1}],['rect',{width:7,height:7,x:3,y:14,rx:1}]],
+  home: [['path',{d:'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8'}],['path',{d:'M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'}]],
   timer: [['line',{x1:10,x2:14,y1:2,y2:2}],['line',{x1:12,x2:15,y1:14,y2:11}],['circle',{cx:12,cy:14,r:8}]],
-  snowflake: [['line',{x1:2,x2:22,y1:12,y2:12}],['line',{x1:12,x2:12,y1:2,y2:22}],['path',{d:'m20 16-4-4 4-4'}],['path',{d:'m4 8 4 4-4 4'}],['path',{d:'m16 4-4 4-4-4'}],['path',{d:'m8 20 4-4 4 4'}]],
-  tv: [['rect',{width:20,height:15,x:2,y:7,rx:2,ry:2}],['polyline',{points:'17 2 12 7 7 2'}]],
-  lightbulb: [['path',{d:'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'}],['path',{d:'M9 18h6'}],['path',{d:'M10 22h4'}]],
-  coffee: [['path',{d:'M10 2v2'}],['path',{d:'M14 2v2'}],['path',{d:'M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'}],['path',{d:'M6 2v2'}]],
   power: [['path',{d:'M12 2v10'}],['path',{d:'M18.4 6.6a9 9 0 1 1-12.77.04'}]],
-  sun: [['circle',{cx:12,cy:12,r:4}],['path',{d:'M12 2v2'}],['path',{d:'M12 20v2'}],['path',{d:'m4.93 4.93 1.41 1.41'}],['path',{d:'m17.66 17.66 1.41 1.41'}],['path',{d:'M2 12h2'}],['path',{d:'M20 12h2'}],['path',{d:'m6.34 17.66-1.41 1.41'}],['path',{d:'m19.07 4.93-1.41 1.41'}]],
-  moon: [['path',{d:'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'}]],
+  minus: [['path',{d:'M5 12h14'}]],
   plus: [['path',{d:'M5 12h14'}],['path',{d:'M12 5v14'}]],
   thermometer: [['path',{d:'M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z'}]],
-  activity: [['path',{d:'M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2'}]],
   refresh: [['path',{d:'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8'}],['path',{d:'M21 3v5h-5'}],['path',{d:'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16'}],['path',{d:'M3 21v-5h5'}]],
+  snowflake: [['line',{x1:2,x2:22,y1:12,y2:12}],['line',{x1:12,x2:12,y1:2,y2:22}],['path',{d:'m20 16-4-4 4-4'}],['path',{d:'m4 8 4 4-4 4'}],['path',{d:'m16 4-4 4-4-4'}],['path',{d:'m8 20 4-4 4 4'}]],
   droplet: [['path',{d:'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z'}]],
   wind: [['path',{d:'M12.8 19.6A2 2 0 1 0 14 16H2'}],['path',{d:'M17.5 8a2.5 2.5 0 1 1 2 4H2'}],['path',{d:'M9.8 4.4A2 2 0 1 1 11 8H2'}]],
   flame: [['path',{d:'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'}]],
-  trash: [['path',{d:'M3 6h18'}],['path',{d:'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'}],['line',{x1:10,x2:10,y1:11,y2:17}],['line',{x1:14,x2:14,y1:11,y2:17}]],
+  tv: [['rect',{width:20,height:15,x:2,y:7,rx:2,ry:2}],['polyline',{points:'17 2 12 7 7 2'}]],
+  lightbulb: [['path',{d:'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'}],['path',{d:'M9 18h6'}],['path',{d:'M10 22h4'}]],
+  coffee: [['path',{d:'M10 2v2'}],['path',{d:'M14 2v2'}],['path',{d:'M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'}],['path',{d:'M6 2v2'}]],
   chevron: [['path',{d:'m6 9 6 6 6-6'}]],
-  calendar: [['path',{d:'M8 2v4'}],['path',{d:'M16 2v4'}],['rect',{width:18,height:18,x:3,y:4,rx:2}],['path',{d:'M3 10h18'}]],
   sliders: [['line',{x1:4,x2:4,y1:21,y2:14}],['line',{x1:4,x2:4,y1:10,y2:3}],['line',{x1:12,x2:12,y1:21,y2:12}],['line',{x1:12,x2:12,y1:8,y2:3}],['line',{x1:20,x2:20,y1:21,y2:16}],['line',{x1:20,x2:20,y1:12,y2:3}],['line',{x1:2,x2:6,y1:14,y2:14}],['line',{x1:10,x2:14,y1:8,y2:8}],['line',{x1:18,x2:22,y1:16,y2:16}]],
+  calendar: [['path',{d:'M8 2v4'}],['path',{d:'M16 2v4'}],['rect',{width:18,height:18,x:3,y:4,rx:2}],['path',{d:'M3 10h18'}]],
+  trash: [['path',{d:'M3 6h18'}],['path',{d:'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'}],['line',{x1:10,x2:10,y1:11,y2:17}],['line',{x1:14,x2:14,y1:11,y2:17}]],
+  lock: [['rect',{width:18,height:11,x:3,y:11,rx:2,ry:2}],['path',{d:'M7 11V7a5 5 0 0 1 10 0v4'}]],
+  swingV: [['path',{d:'m7 15 5 5 5-5'}],['path',{d:'m7 9 5-5 5 5'}]],
+  swingH: [['path',{d:'m15 7 5 5-5 5'}],['path',{d:'m9 7-5 5 5 5'}]],
+  up: [['path',{d:'m18 15-6-6-6 6'}]],
+  down: [['path',{d:'m6 9 6 6 6-6'}]],
+  left: [['path',{d:'m15 18-6-6 6-6'}]],
+  right: [['path',{d:'m9 18 6-6-6-6'}]],
+  center: [['path',{d:'M5 12h14'}]],
 };
 
 function svg(name, size = 22, color = 'currentColor') {
@@ -52,32 +57,32 @@ function svg(name, size = 22, color = 'currentColor') {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0">${inner}</svg>`;
 }
 
-// ── Теми (з дизайну) ──
-const THEMES = {
-  dark: { bg:'#0a0c10', panel:'#14181f', panel2:'#1d222b', border:'rgba(255,255,255,.08)', border2:'rgba(255,255,255,.14)', swOff:'#39414f',
-    text:'#eef1f5', muted:'#98a2b0', faint:'#616b78', accent:'#5b8def', accentBg:'rgba(91,141,239,.16)',
-    on:'#3ecf8e', onBg:'rgba(62,207,142,.14)', shadow:'none', glow:'rgba(91,141,239,.13)' },
-  light: { bg:'#eceff4', panel:'#ffffff', panel2:'#f3f6fa', border:'#e4e8ef', border2:'#d3dae4', swOff:'#c6cfdb',
-    text:'#12151b', muted:'#5f6a78', faint:'#95a0ae', accent:'#3b6fe0', accentBg:'rgba(59,111,224,.10)',
-    on:'#12a566', onBg:'rgba(18,165,102,.10)', shadow:'0 2px 14px rgba(20,30,55,.06)', glow:'rgba(59,111,224,.10)' },
-};
-
-const MODES = [['auto','Авто','refresh'],['cool','Холод','snowflake'],['dry','Осушення','droplet'],['fan','Вентиляція','wind'],['heat','Тепло','flame']];
-const MODE_LABEL = { auto:'Авто', cool:'Холод', dry:'Осушення', fan:'Вентиляція', heat:'Тепло' };
+// ── Кольори (одна тема, як у дизайні) ──
+const C = { panel: '#14181f', panel2: '#1d222b', border: 'rgba(255,255,255,0.08)', text: '#eef1f5', muted: '#98a2b0', faint: '#616b78', accent: '#5b8def', swOff: '#39414f', on: '#3ecf8e' };
+const MODE_COLORS = { auto: '#5b8def', cool: '#5b8def', dry: '#49b6d6', fan: '#57d6b0', heat: '#f0883e' };
+const MODE_LABELS = { auto: 'Авто', cool: 'Холод', dry: 'Осушення', fan: 'Вентиляція', heat: 'Тепло' };
+// [ключ, коротка мітка для сегмента, іконка]
+const MODES = [['auto','Авто','refresh'],['cool','Холод','snowflake'],['dry','Осуш.','droplet'],['fan','Вент.','wind'],['heat','Тепло','flame']];
+const FAN_OPTS = [[0,'Авто'],[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']];
+const SWING_V_OPTS = [[0,'Фікс.','lock'],[1,'Авто','swingV'],[2,'Верх','up'],[4,'Центр','center'],[6,'Низ','down']];
+const SWING_H_OPTS = [[0,'Фікс.','lock'],[1,'Авто','swingH'],[2,'Ліво','left'],[4,'Центр','center'],[6,'Право','right']];
+const FEAT_OPTS = [['turbo','Турбо'],['quiet','Тихий режим'],['eco','Еко'],['sleep','Сон'],['xfan','Просушка'],['health','Іонізація'],['light','Підсвітка дисплея']];
 const EMOJI_ICON = { '❄️':'snowflake', '📺':'tv', '💡':'lightbulb', '☕':'coffee' };
 
 // ── Стан ──
 const S = {
-  theme: localStorage.getItem('hub_theme') || 'dark',
-  tab: 'devices',
+  tab: 'home',
   devices: [],        // пристрої: HTTP — усі з /api/devices; MQTT — лише кондиціонер
   rules: null,        // правила автоматизацій, або null поки не завантажені
-  acOpen: false,
+  extraOpen: false,   // «Додаткові налаштування» AC розгорнуто
   editIdx: null,      // який розклад розгорнуто на редагування
   dragging: false,
   lastEditAt: 0,      // час останньої локальної правки правил (MQTT: щоб retained не затирав)
   conn: 'connecting', // 'connecting' | 'connected' | 'disconnected'
   boardStatus: null,  // MQTT: 'online' | 'offline' | null; HTTP: завжди null
+  gotState: false,      // MQTT: чи прийшов хоч один ac/state
+  everConnected: false, // чи були ми хоч раз «наживо» (для тексту «Відновлення…»)
+  connStep: 0,          // індекс поточного повідомлення лоудера
 };
 
 // Запасний список пристроїв для редактора розкладів (MQTT-режим до першого стану).
@@ -87,54 +92,76 @@ const editDevices = () => S.devices.length ? S.devices : FALLBACK_DEVICES;
 const $ = s => document.querySelector(s);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-// ── Тема ──
-function applyTheme() {
-  const t = THEMES[S.theme];
-  const r = document.documentElement.style;
-  r.setProperty('--bg', t.bg); r.setProperty('--panel', t.panel); r.setProperty('--panel2', t.panel2);
-  r.setProperty('--border', t.border); r.setProperty('--border2', t.border2); r.setProperty('--sw-off', t.swOff);
-  r.setProperty('--text', t.text); r.setProperty('--muted', t.muted); r.setProperty('--faint', t.faint);
-  r.setProperty('--accent', t.accent); r.setProperty('--accent-bg', t.accentBg);
-  r.setProperty('--on', t.on); r.setProperty('--on-bg', t.onBg);
-  r.setProperty('--shadow', t.shadow); r.setProperty('--glow', t.glow);
-  const icon = S.theme === 'dark' ? 'sun' : 'moon';
-  const label = S.theme === 'dark' ? 'Світла тема' : 'Темна тема';
-  $('#themeBtnSide').innerHTML = svg(icon, 19) + `<span>${label}</span>`;
-  $('#themeBtnTop').innerHTML = svg(icon, 19);
-}
-function toggleTheme() {
-  S.theme = S.theme === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('hub_theme', S.theme);
-  applyTheme(); renderAll(); renderStatus();
+// ── Лоудер підключення (керується РЕАЛЬНИМ станом зв'язку) ──
+const CONN_MSGS = ['Пошук хаба…', 'Автентифікація…', 'Синхронізація пристроїв…', 'Майже готово…'];
+const RECONNECT_MSG = "Відновлення зв'язку…";
+let connStepTimer = null, hideTimer = null;
+
+// «Наживо» = справжнє з'єднання І дані. Лоудер видно, доки це НЕ так.
+//   HTTP: останній poll /api/devices був успішним (S.conn === 'connected').
+//   MQTT: сокет підключено ТА статус плати 'online' ТА прийшов хоч один ac/state.
+function connLive() {
+  if (NET.mode === 'http') return S.conn === 'connected';
+  return S.conn === 'connected' && S.boardStatus === 'online' && S.gotState;
 }
 
-// ── Навігація ──
-const NAV = [['devices','Огляд','grid'],['auto','Автоматизації','timer']];
+function renderLoaderMsg() {
+  const el = $('#loaderMsg');
+  if (!el) return;
+  el.textContent = S.everConnected ? RECONNECT_MSG : CONN_MSGS[Math.min(CONN_MSGS.length - 1, S.connStep)];
+}
+function startMsgCycle() {
+  if (connStepTimer) return;
+  connStepTimer = setInterval(() => {
+    S.connStep = Math.min(CONN_MSGS.length - 1, S.connStep + 1);
+    renderLoaderMsg();
+  }, 700);
+}
+function stopMsgCycle() { clearInterval(connStepTimer); connStepTimer = null; }
+
+function showLoader() {
+  const l = $('#loader');
+  if (!l) return;
+  clearTimeout(hideTimer);
+  l.style.display = 'flex';
+  l.style.opacity = '1';
+  renderLoaderMsg();
+  startMsgCycle();
+}
+function hideLoader() {
+  const l = $('#loader');
+  if (!l) return;
+  stopMsgCycle();
+  l.style.opacity = '0';
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => { if (connLive()) l.style.display = 'none'; }, 350);
+}
+// Єдина точка: показати/сховати лоудер за поточним станом зв'язку.
+function updateLoader() {
+  if (connLive()) { S.everConnected = true; hideLoader(); }
+  else showLoader();
+}
+
+// ── Навігація / вкладки ──
+const NAV = [['home','Дім','home'],['auto','Автоматизації','timer']];
 function renderNav() {
-  $('#sideNav').innerHTML = NAV.map(([k, label, ic]) =>
-    `<button class="side-item ${S.tab===k?'active':''}" onclick="showTab('${k}')">${svg(ic,20)}<span>${label}</span></button>`).join('');
   $('#bottomNav').innerHTML = NAV.map(([k, label, ic]) =>
-    `<button class="tab-item ${S.tab===k?'active':''}" onclick="showTab('${k}')">${svg(ic,22)}<span>${label}</span></button>`).join('');
+    `<button class="nav-item ${S.tab===k?'active':''}" onclick="showTab('${k}')">${svg(ic, 23, S.tab===k?C.accent:C.faint)}<span>${label}</span></button>`).join('');
 }
 function showTab(k) {
   S.tab = k;
-  $('#view-devices').style.display = k === 'devices' ? '' : 'none';
+  $('#view-home').style.display = k === 'home' ? '' : 'none';
   $('#view-auto').style.display = k === 'auto' ? '' : 'none';
-  $('#pageTitle').textContent = k === 'devices' ? 'Огляд дому' : 'Автоматизації';
   renderNav();
   if (k === 'auto') { NET.refreshRules(); renderAuto(); }
 }
 
-// ── Годинник ──
+// ── Годинник (щосекунди, укр. локаль) ──
 function tickClock() {
   const now = new Date();
-  $('#clock').textContent = now.toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit', hour12:false });
-  let wd = now.toLocaleDateString('uk-UA', { weekday:'long' });
-  $('#weekday').textContent = wd.charAt(0).toUpperCase() + wd.slice(1);
-  $('#datestr').textContent = now.toLocaleDateString('uk-UA', { day:'numeric', month:'long' });
-  const h = now.getHours();
-  const greeting = h < 5 ? 'Доброї ночі' : h < 12 ? 'Доброго ранку' : h < 18 ? 'Доброго дня' : 'Доброго вечора';
-  $('#greet').innerHTML = svg(h >= 6 && h < 18 ? 'sun' : 'moon', 15, THEMES[S.theme].accent) + `<span>${greeting}</span>`;
+  const t = $('#clockTime'); if (t) t.textContent = now.toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit', hour12:false });
+  const wdEl = $('#clockWeekday'); if (wdEl) { let wd = now.toLocaleDateString('uk-UA', { weekday:'long' }); wdEl.textContent = wd.charAt(0).toUpperCase() + wd.slice(1); }
+  const dEl = $('#clockDate'); if (dEl) dEl.textContent = now.toLocaleDateString('uk-UA', { day:'numeric', month:'long' });
 }
 
 /* ═══ ШАР ДАНИХ ═══════════════════════════════════════════════════════════
@@ -150,7 +177,7 @@ function tickClock() {
 function setConn(c) {
   if (S.conn === c) return;
   S.conn = c;
-  renderStatus();
+  updateLoader();
 }
 
 // Оптимістичні дії з UI (спільні), делегують у транспорт:
@@ -180,9 +207,9 @@ function makeHttpTransport() {
       const r = await fetch('/api/devices');
       if (!r.ok) throw new Error();
       S.devices = await r.json();
-      setConn('connected');
+      setConn('connected');       // успішний poll → connLive() → ховаємо лоудер
       renderAll();
-    } catch (e) { setConn('disconnected'); }
+    } catch (e) { setConn('disconnected'); }  // збій poll → лоудер повертається
   }
   return {
     mode: 'http',
@@ -240,15 +267,17 @@ function makeMqttTransport() {
     if (topic === T_STATUS) {
       const v = text.trim();
       if (v === 'online' || v === 'offline') S.boardStatus = v;
-      renderStatus();
-      if (S.tab === 'auto') renderAuto();  // оновити примітку про офлайн-плату
+      updateLoader();                        // статус плати впливає на «наживо»
+      if (S.tab === 'auto') renderAuto();    // оновити примітку про офлайн-плату
       return;
     }
     if (topic === T_STATE) {
       try {
         const st = JSON.parse(text);
         S.devices = [buildAcDevice(st)];
-        if (!S.dragging) renderAll();      // не перемальовуємо під час перетягування
+        S.gotState = true;
+        updateLoader();                      // отримали стан → можливо ховаємо лоудер
+        if (!S.dragging) renderAll();        // не перемальовуємо під час перетягування
       } catch (e) { /* некоректний payload — ігноруємо, без логів */ }
       return;
     }
@@ -317,175 +346,218 @@ function makeMqttTransport() {
 
 const NET = USE_MQTT ? makeMqttTransport() : makeHttpTransport();
 
-// ── Статус-пілл підключення ──
-function renderStatus() {
-  const pill = $('#statusPill');
-  if (!pill) return;
-  let emoji, text;
-  if (NET.mode === 'http') {
-    if (S.conn === 'connected')        { emoji = '🟢'; text = 'Локально'; }
-    else if (S.conn === 'connecting')  { emoji = '🟡'; text = 'Підключення…'; }
-    else                               { emoji = '🔴'; text = "Немає зв'язку"; }
-  } else {
-    if (S.conn === 'connected') {
-      if (S.boardStatus === 'online')       { emoji = '🟢'; text = "На зв'язку"; }
-      else if (S.boardStatus === 'offline') { emoji = '🔴'; text = 'Плата офлайн'; }
-      else                                  { emoji = '🟡'; text = 'Підключення…'; } // ще без статусу
-    } else if (S.conn === 'connecting')     { emoji = '🟡'; text = 'Підключення…'; }
-    else                                    { emoji = '🔴'; text = "Немає зв'язку"; }
-  }
-  pill.innerHTML = `<span aria-hidden="true">${emoji}</span><span>${text}</span>`;
-}
-
 /* ═══ Далі — СПІЛЬНИЙ інтерфейс (однаковий для HTTP і MQTT) ═══ */
 
-// ── Пристрої: статистика + AC + сітка ──
 const acDev = () => S.devices.find(d => d.kind === 'ac');
+const sw = on => `<span class="sw ${on?'on':''}"><span class="knob"></span></span>`;
 
-function renderStats() {
-  const t = THEMES[S.theme];
+// ── Геометрія кругового термостата ──
+function pol(a, r) { const rad = a * Math.PI / 180; return { x: 120 + r * Math.cos(rad), y: 120 + r * Math.sin(rad) }; }
+function arc(a0, a1) {
+  const R = 96; const s = pol(a0, R), e = pol(a1, R);
+  const large = (a1 - a0) > 180 ? 1 : 0;
+  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${R} ${R} 0 ${large} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+}
+
+// ── Інфо-картки (час + температура в кімнаті) ──
+function renderInfoCards() {
   const ac = acDev();
-  const on = S.devices.filter(d => d.state.on).length;
-  const acOn = ac && ac.state.on;
-  $('#stats').innerHTML = `
-    <div class="stat"><div class="stat-icon">${svg('thermometer',20,t.accent)}</div>
-      <div><div class="stat-label">Температура</div><div class="stat-value">${ac && ac.state.room_temp != null ? ac.state.room_temp : '—'}°C</div></div></div>
-    <div class="stat"><div class="stat-icon">${svg('activity',20,t.accent)}</div>
-      <div><div class="stat-label">Активні</div><div class="stat-value">${on} / ${S.devices.length}</div></div></div>
-    <div class="stat"><div class="stat-icon">${svg('snowflake',20,t.accent)}</div>
-      <div><div class="stat-label">Кондиціонер</div><div class="stat-text"><span class="dot" style="background:${acOn?t.on:t.border2}"></span>${acOn ? `${MODE_LABEL[ac.state.mode]||''} · ${ac.state.temp}°` : (ac ? 'Вимкнений' : 'Очікую стан…')}</div></div></div>`;
-}
-
-function chip(label, active, onclick, iconName) {
-  const t = THEMES[S.theme];
-  const ic = iconName ? svg(iconName, 16, active ? t.accent : t.muted) : '';
-  return `<button class="chip ${active?'active':''}" onclick="${onclick}">${ic}<span>${esc(label)}</span></button>`;
-}
-
-function sliderHTML(id, val, min, max, { small = false, dim = false } = {}) {
-  const pct = ((val - min) / (max - min)) * 100;
-  return `
-    <div class="slider ${small?'small':''} ${dim?'dim':''}" data-slider="${id}" data-min="${min}" data-max="${max}">
-      <div class="slider-rail"></div>
-      <div class="slider-fill" style="width:${pct}%"></div>
-      <div class="slider-knob" style="left:${pct}%"></div>
+  const rt = ac && ac.state.room_temp != null ? ac.state.room_temp : '—';
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('uk-UA', { hour:'2-digit', minute:'2-digit', hour12:false });
+  let wd = now.toLocaleDateString('uk-UA', { weekday:'long' }); wd = wd.charAt(0).toUpperCase() + wd.slice(1);
+  const dateStr = now.toLocaleDateString('uk-UA', { day:'numeric', month:'long' });
+  $('#infoCards').innerHTML = `
+    <div class="info-card">
+      <div class="info-time" id="clockTime">${timeStr}</div>
+      <div class="info-date"><span id="clockWeekday">${wd}</span>, <span id="clockDate">${dateStr}</span></div>
+    </div>
+    <div class="info-card">
+      <div class="info-room-cap">${svg('thermometer',14,C.accent)}<span>У кімнаті</span></div>
+      <div class="info-room-val" id="roomTempVal">${rt}<span class="deg">°C</span></div>
     </div>`;
 }
 
+// ── Сегментовані ряди ──
+function modeSeg(cur, fn, dim) {
+  return `<div class="seg-row">${MODES.map(([k, label, ic]) => {
+    const isA = !dim && cur === k;
+    const col = MODE_COLORS[k];
+    const st = isA ? `background:${col}26` : '';
+    return `<button class="seg-btn ${isA?'active':''}" style="${st}" onclick="${fn}('${k}')">${svg(ic, 18, isA?col:C.muted)}<span class="seg-label" style="${isA?`color:${col}`:''}">${label}</span></button>`;
+  }).join('')}</div>`;
+}
+function fanSeg(cur) {
+  return `<div class="seg-row">${FAN_OPTS.map(([v, l]) =>
+    `<button class="seg-btn seg-plain ${cur===v?'active':''}" onclick="acSet('fan',${v})">${l}</button>`).join('')}</div>`;
+}
+function swingSeg(opts, cur, key) {
+  return `<div class="seg-row">${opts.map(([v, l, ic]) => {
+    const isA = cur === v;
+    return `<button class="seg-btn ${isA?'active':''}" onclick="acSet('${key}',${v})">${svg(ic, 17, isA?C.accent:C.muted)}<span class="seg-label">${l}</span></button>`;
+  }).join('')}</div>`;
+}
+function featList(s) {
+  return `<div class="feat-card">${FEAT_OPTS.map(([k, l]) =>
+    `<div class="feat-row"><span class="feat-label">${l}</span><button class="sw-btn" onclick="acSet('${k}',${!s[k]})">${sw(!!s[k])}</button></div>`).join('')}</div>`;
+}
+
+// ── Кондиціонер: круговий термостат ──
 function renderAcCard() {
-  const t = THEMES[S.theme];
   const ac = acDev();
   const el = $('#acCard');
 
   // Поки стан не прийшов (перший poll / перший ac/state) — картка очікування.
   if (!ac) {
-    el.innerHTML = `
-    <section class="card">
-      <div class="card-head">
-        <div class="card-id">
-          <div class="card-icon">${svg('snowflake',26,t.faint)}</div>
-          <div>
-            <div class="card-title">Кондиціонер</div>
-            <div class="card-sub">Очікую стан…</div>
-          </div>
+    el.innerHTML = `<div class="hero">
+      <div class="hero-head">
+        <div class="hero-id">
+          <div class="hero-icon">${svg('snowflake',24,C.faint)}</div>
+          <div><div class="hero-title">Кондиціонер</div><div class="hero-sub">Очікую стан…</div></div>
         </div>
-        <button class="power-btn" disabled style="opacity:.55;cursor:default">${svg('power',16,t.muted)}<span>—</span></button>
+        <button class="power-btn" disabled>${svg('power',15,C.muted)}<span>—</span></button>
       </div>
-      <div class="ac-body">
-        <div class="ac-target">
-          <div class="ac-target-num">--<span class="deg">°</span></div>
-          <div class="ac-target-cap">Ціль</div>
-        </div>
-        <div class="slider-zone">
-          ${sliderHTML('ac-temp', 24, 16, 30, { dim: true })}
-          <div class="slider-scale"><span>16°</span><span>30°</span></div>
+      <div class="dial">
+        <svg viewBox="0 0 240 240" class="dial-svg">
+          <path d="${arc(135,405)}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16" stroke-linecap="round"></path>
+        </svg>
+        <div class="dial-center">
+          <div class="dial-cap">ЦІЛЬ</div>
+          <div class="dial-num off"><span>--</span><span class="dial-unit">°C</span></div>
+          <div class="dial-room">${svg('thermometer',13,C.muted)}<span>кімната —</span></div>
         </div>
       </div>
-    </section>`;
-    return; // слайдери не прив'язуємо у стані очікування
+    </div>`;
+    return;
   }
 
   const s = ac.state;
   const on = s.on;
+  const effMode = s.mode || 'cool';
+  const active = MODE_COLORS[effMode] || C.accent;
+  const modeColor = on ? active : C.swOff;
+  const temp = s.temp;
+  const frac = (temp - 16) / 14;
+  const endA = 135 + frac * 270;
+  const knob = pol(Math.max(135.5, endA), 96);
+  const roomLine = s.room_temp != null ? `${s.room_temp}° у кімнаті` : 'кімната —';
 
-  const modes = MODES.map(([k, label, ic]) =>
-    chip(label, on && s.mode === k, `acMode('${k}')`, ic)).join('');
-
-  const fan = [[0,'Авто'],[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']].map(([v, l]) =>
-    chip(l, s.fan === v, `acSet('fan',${v})`)).join('');
-  const swingV = [[0,'Фікс.'],[1,'Гойдання'],[2,'Вгору'],[4,'Центр'],[6,'Вниз']].map(([v, l]) =>
-    chip(l, s.swing === v, `acSet('swing',${v})`)).join('');
-  const swingH = [[0,'Фікс.'],[1,'Гойдання'],[2,'Вліво'],[4,'Центр'],[6,'Вправо']].map(([v, l]) =>
-    chip(l, s.swing_h === v, `acSet('swing_h',${v})`)).join('');
-  const feats = [['turbo','Турбо'],['quiet','Тихо'],['eco','Еко'],['sleep','Сон'],['xfan','Просушка'],['health','Іонізація'],['light','Підсвітка']].map(([k, l]) =>
-    chip(l, !!s[k], `acSet('${k}',${!s[k]})`)).join('');
-
-  el.innerHTML = `
-  <section class="card ${on?'ac-on':''}">
-    <div class="card-head">
-      <div class="card-id">
-        <div class="card-icon ${on?'lit':''}">${svg('snowflake',26,on?t.accent:t.faint)}</div>
-        <div>
-          <div class="card-title">Кондиціонер</div>
-          <div class="card-sub">${esc(ac.room)} · ${on ? `працює · ${s.room_temp != null ? s.room_temp+'° у кімнаті' : ''}` : 'вимкнений'}</div>
-        </div>
+  el.innerHTML = `<div class="hero ${on?'on':''}">
+    <div class="hero-head">
+      <div class="hero-id">
+        <div class="hero-icon ${on?'lit':''}">${svg('snowflake',24,on?active:C.faint)}</div>
+        <div><div class="hero-title">Кондиціонер</div><div class="hero-sub">${esc(ac.room)}</div></div>
       </div>
-      <button class="power-btn ${on?'on':''}" onclick="toggleDev('${ac.id}')">${svg('power',16,on?'#fff':t.muted)}<span>${on?'Увімк.':'Вимк.'}</span></button>
+      <button class="power-btn ${on?'on':''}" onclick="toggleDev('${ac.id}')">${svg('power',15,on?'#fff':C.muted)}<span>${on?'Увімк.':'Вимк.'}</span></button>
     </div>
-    <div class="ac-body">
-      <div class="ac-target">
-        <div class="ac-target-num" id="acTempVal">${s.temp}<span class="deg">°</span></div>
-        <div class="ac-target-cap">Ціль</div>
-      </div>
-      <div class="slider-zone">
-        ${sliderHTML('ac-temp', s.temp, 16, 30, { dim: !on })}
-        <div class="slider-scale"><span>16°</span><span>30°</span></div>
+
+    <div class="dial" id="dial">
+      <svg viewBox="0 0 240 240" class="dial-svg">
+        <path d="${arc(135,405)}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16" stroke-linecap="round"></path>
+        <path id="dialFill" d="${arc(135, Math.max(135.5, endA))}" fill="none" stroke="${modeColor}" stroke-width="16" stroke-linecap="round" style="${on?`filter:drop-shadow(0 0 9px ${active}77)`:''}"></path>
+        <circle id="dialKnob" cx="${knob.x.toFixed(2)}" cy="${knob.y.toFixed(2)}" r="13" fill="#fff" stroke="${modeColor}" stroke-width="3" style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45))"></circle>
+      </svg>
+      <div class="dial-center">
+        <div class="dial-cap">ЦІЛЬ</div>
+        <div class="dial-num ${on?'':'off'}"><span id="dialTemp">${temp}</span><span class="dial-unit">°C</span></div>
+        <div class="dial-room">${svg('thermometer',13,C.muted)}<span>${roomLine}</span></div>
       </div>
     </div>
-    <div class="chips" style="margin-top:20px">${modes}</div>
-    <div class="ac-extra">
-      <button class="ac-extra-toggle" onclick="toggleAcExtra()">
-        <span class="left">${svg('sliders',18,t.accent)}<span>Додаткові налаштування</span></span>
-        <span class="chev ${S.acOpen?'open':''}">${svg('chevron',18,t.muted)}</span>
+
+    <div class="dial-controls">
+      <button class="round-btn" onclick="decTemp()" ${on?'':'disabled'}>${svg('minus',20,on?C.text:C.faint)}</button>
+      <div class="dial-mode-label">
+        <div class="dml-mode ${on?'':'off'}">${MODE_LABELS[effMode]}</div>
+        <div class="dml-state">${on?'Працює зараз':'Вимкнено'}</div>
+      </div>
+      <button class="round-btn" onclick="incTemp()" ${on?'':'disabled'}>${svg('plus',20,on?C.text:C.faint)}</button>
+    </div>
+
+    <div class="hero-modes">${modeSeg(effMode, 'acMode', !on)}</div>
+
+    <div class="extra">
+      <button class="extra-toggle" onclick="toggleExtra()">
+        <span class="left">${svg('sliders',18,C.accent)}<span>Додаткові налаштування</span></span>
+        <span class="chev ${S.extraOpen?'open':''}">${svg('chevron',18,C.muted)}</span>
       </button>
-      ${S.acOpen ? `
-      <div class="ac-extra-body">
-        <div><div class="group-label">Швидкість вентилятора</div><div class="chips">${fan}</div></div>
-        <div><div class="group-label">Жалюзі ↕ (вгору-вниз)</div><div class="chips">${swingV}</div></div>
-        <div><div class="group-label">Жалюзі ↔ (вліво-вправо)</div><div class="chips">${swingH}</div></div>
-        <div><div class="group-label">Функції</div><div class="chips">${feats}</div></div>
+      ${S.extraOpen ? `<div class="extra-body">
+        <div><div class="group-label">Швидкість вентилятора</div>${fanSeg(s.fan)}</div>
+        <div><div class="group-label">Жалюзі — вертикальні ↕</div>${swingSeg(SWING_V_OPTS, s.swing, 'swing')}</div>
+        <div><div class="group-label">Жалюзі — горизонтальні ↔</div>${swingSeg(SWING_H_OPTS, s.swing_h, 'swing_h')}</div>
+        <div><div class="group-label">Функції</div>${featList(s)}</div>
       </div>` : ''}
     </div>
-  </section>`;
-  bindSliders(el);
+  </div>`;
+
+  const dial = $('#dial');
+  if (dial && on) bindDial(dial);
 }
 
+// AC-дії
 function acMode(m) { const ac = acDev(); if (ac) setDev(ac.id, { mode: m, on: true }); }
 function acSet(k, v) { const ac = acDev(); if (ac) setDev(ac.id, { [k]: v }); }
-function toggleAcExtra() { S.acOpen = !S.acOpen; renderAcCard(); }
+function toggleExtra() { S.extraOpen = !S.extraOpen; renderAcCard(); }
+function incTemp() { const ac = acDev(); if (!ac || !ac.state.on) return; setDev(ac.id, { temp: Math.min(30, ac.state.temp + 1) }); }
+function decTemp() { const ac = acDev(); if (!ac || !ac.state.on) return; setDev(ac.id, { temp: Math.max(16, ac.state.temp - 1) }); }
 
-function renderGrid() {
-  const t = THEMES[S.theme];
+// ── Перетягування диска термостата (математика з дизайну) ──
+function dialTempFromPointer(el, e) {
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+  let a = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+  if (a < 0) a += 360;
+  let p;
+  if (a >= 135) p = a; else if (a <= 45) p = a + 360; else p = (a < 90) ? 405 : 135;
+  const frac = Math.min(1, Math.max(0, (p - 135) / 270));
+  return Math.round(16 + frac * 14);
+}
+function updateDialVisual(temp) {
+  const ac = acDev();
+  const effMode = (ac && ac.state.mode) || 'cool';
+  const frac = (temp - 16) / 14; const endA = 135 + frac * 270;
+  const knob = pol(Math.max(135.5, endA), 96);
+  const f = $('#dialFill'); if (f) f.setAttribute('d', arc(135, Math.max(135.5, endA)));
+  const k = $('#dialKnob'); if (k) { k.setAttribute('cx', knob.x.toFixed(2)); k.setAttribute('cy', knob.y.toFixed(2)); }
+  const t = $('#dialTemp'); if (t) t.textContent = temp;
+}
+function bindDial(el) {
+  el.addEventListener('pointerdown', e => {
+    if (!acDev() || !acDev().state.on) return;
+    S.dragging = true;
+    try { el.setPointerCapture(e.pointerId); } catch (_) {}
+    const apply = ev => { const v = dialTempFromPointer(el, ev); el._temp = v; updateDialVisual(v); };
+    apply(e);
+    const move = ev => { if (S.dragging) apply(ev); };
+    const up = () => {
+      S.dragging = false;
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      const v = el._temp; const ac = acDev();
+      if (v != null && ac && v !== ac.state.temp) setDev(ac.id, { temp: v });
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
+}
+
+// ── Швидкий доступ (інші пристрої) ──
+function renderQuickAccess() {
   const others = S.devices.filter(d => d.kind !== 'ac');
-  // Якщо крім кондиціонера пристроїв немає (MQTT-режим) — ховаємо заголовок сітки.
-  const gt = $('#gridTitle');
-  if (gt) gt.style.display = others.length ? '' : 'none';
-  $('#grid').innerHTML = others.map(d => {
-    const on = d.state.on;
-    const ic = EMOJI_ICON[d.icon] || 'power';
-    return `
-    <button class="tile ${on?'on':''}" onclick="toggleDev('${d.id}')">
-      <div class="tile-top">
-        <div class="tile-icon">${svg(ic, 23, on ? t.accent : t.faint)}</div>
-        <span class="sw ${on?'on':''}"><span class="knob"></span></span>
-      </div>
-      <div>
-        <div class="tile-name">${esc(d.name)}</div>
-        <div class="tile-room">${esc(d.room)}</div>
-      </div>
-      <div class="tile-state">${on?'Увімкнено':'Вимкнено'}</div>
-    </button>`;
-  }).join('');
+  const el = $('#quickAccess');
+  // MQTT-режим: інших пристроїв немає → ховаємо секцію повністю.
+  if (!others.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = `<div class="section-label">Швидкий доступ</div>
+    <div class="tile-grid">${others.map(d => {
+      const on = d.state.on; const ic = EMOJI_ICON[d.icon] || 'power';
+      return `<button class="tile ${on?'on':''}" onclick="toggleDev('${d.id}')">
+        <div class="tile-top"><div class="tile-icon">${svg(ic,22,on?C.accent:C.faint)}</div>${sw(on)}</div>
+        <div><div class="tile-name">${esc(d.name)}</div><div class="tile-room">${esc(d.room)}</div></div>
+        <div class="tile-state ${on?'on':''}">${on?'Увімкнено':'Вимкнено'}</div>
+      </button>`;
+    }).join('')}</div>`;
 }
 
 // ── Автоматизації ──
@@ -493,118 +565,118 @@ function deviceName(id) {
   const d = S.devices.find(x => x.id === id) || FALLBACK_DEVICES.find(x => x.id === id);
   return d ? `${d.name} · ${d.room}` : id;
 }
+function schedDesc(r) {
+  if (r.action === 'on') return 'Увімкнути';
+  if (r.action === 'off') return 'Вимкнути';
+  const p = [];
+  if (r.set && r.set.mode) p.push(MODE_LABELS[r.set.mode]);
+  if (r.set && r.set.temp != null) p.push(r.set.temp + '°');
+  if (r.set && r.set.quiet) p.push('тихо');
+  if (r.set && r.set.sleep) p.push('сон');
+  return 'Змінити · ' + (p.join(' · ') || 'налаштування');
+}
 
 function renderAuto() {
-  const t = THEMES[S.theme];
   const el = $('#autoRoot');
   const offline = S.boardStatus === 'offline';  // можливо лише в MQTT-режимі
+  const header = `<div class="auto-head">
+    <div class="auto-eyebrow">${svg('timer',15,C.accent)}<span>Правила та розклади</span></div>
+    <div class="auto-h1">Автоматизації</div>
+  </div>`;
 
   // Правила ще не завантажені.
   if (!S.rules) {
-    el.innerHTML = offline
+    el.innerHTML = header + (offline
       ? `<div class="empty-note">Плата зараз офлайн — для редагування правил вона має бути на зв'язку.<br>Щойно плата з'явиться онлайн, правила завантажаться сюди автоматично.</div>`
-      : '<div class="empty-note">Завантаження правил…</div>';
+      : '<div class="empty-note">Завантаження правил…</div>');
     return;
   }
 
-  // Правила є, але плата офлайн (MQTT) — попереджаємо про збереження.
-  const warn = offline ? `
-  <section class="auto-card" style="padding:16px 20px">
-    <div class="card-sub" style="margin:0">🔴 Плата зараз офлайн — збереження змін спрацює, лише коли вона знову буде на зв'язку.</div>
-  </section>` : '';
+  const warn = offline
+    ? `<div class="warn-card">🔴 Плата зараз офлайн — збереження змін спрацює, лише коли вона знову буде на зв'язку.</div>`
+    : '';
 
   const c = S.rules.climate || {};
   const scheds = S.rules.schedules || [];
 
-  const sliders = [
-    { field:'trigger', label:'Вмикати, коли в кімнаті вище', min:20, max:32 },
-    { field:'target', label:'Підтримувати температуру', min:16, max:30 },
-    { field:'off_below', label:'Вимикати, коли охолоне до', min:16, max:28 },
-  ].map(sl => `
-    <div>
-      <div class="clim-row-head">
-        <span class="clim-label">${sl.label}</span>
-        <span class="clim-value" id="climVal-${sl.field}">${c[sl.field]}°</span>
-      </div>
-      ${sliderHTML('clim-' + sl.field, c[sl.field], sl.min, sl.max, { small:true })}
-    </div>`).join('');
-
-  const modes = MODES.map(([k, label, ic]) =>
-    chip(label, c.mode === k, `climSet('mode','${k}')`, ic)).join('');
+  const steps = [
+    { field:'trigger', label:'Вмикати, коли вище', min:20, max:32 },
+    { field:'target', label:'Підтримувати', min:16, max:30 },
+    { field:'off_below', label:'Вимикати, коли нижче', min:16, max:28 },
+  ].map(st => `<div class="step-row">
+    <span class="step-label">${st.label}</span>
+    <div class="step-ctrl">
+      <button class="step-btn" onclick="climStep('${st.field}',-1,${st.min},${st.max})">${svg('minus',17,C.text)}</button>
+      <span class="step-val">${c[st.field] != null ? c[st.field] + '°' : '--'}</span>
+      <button class="step-btn" onclick="climStep('${st.field}',1,${st.min},${st.max})">${svg('plus',17,C.text)}</button>
+    </div>
+  </div>`).join('');
 
   const rows = scheds.map((r, i) => {
     const on = r.enabled !== false;
-    let desc;
-    if (r.action === 'on') desc = 'Увімкнути';
-    else if (r.action === 'off') desc = 'Вимкнути';
-    else {
-      const p = [];
-      if (r.set && r.set.mode) p.push(MODE_LABEL[r.set.mode]);
-      if (r.set && r.set.temp != null) p.push(r.set.temp + '°');
-      if (r.set && r.set.quiet) p.push('тихо');
-      if (r.set && r.set.sleep) p.push('сон');
-      desc = 'Змінити · ' + (p.join(' · ') || 'налаштування');
-    }
     const editor = S.editIdx === i ? schedEditor(r, i) : '';
-    return `
-    <div class="sched-row ${on?'':'off'}">
-      <div class="sched-time">${esc(r.time || '--:--')}</div>
-      <div class="sched-info" onclick="schedEdit(${i})" title="Натисни, щоб редагувати">
-        <div class="sched-dev">${esc(deviceName(r.device))}</div>
-        <div class="sched-desc">${esc(desc)}</div>
+    return `<div class="sched-item ${on?'':'off'}">
+      <div class="sched-row">
+        <div class="sched-time">${esc(r.time || '--:--')}</div>
+        <div class="sched-info" onclick="schedEdit(${i})" title="Натисни, щоб редагувати">
+          <div class="sched-dev">${esc(deviceName(r.device))}</div>
+          <div class="sched-desc">${esc(schedDesc(r))}</div>
+        </div>
+        <button class="sw-btn" onclick="schedToggle(${i})">${sw(on)}</button>
+        <button class="del-btn" onclick="schedDel(${i})">${svg('trash',16,C.muted)}</button>
       </div>
-      <button class="sw-btn" onclick="schedToggle(${i})"><span class="sw ${on?'on':''}"><span class="knob"></span></span></button>
-      <div class="sched-sep"></div>
-      <button class="del-btn" onclick="schedDel(${i})">${svg('trash',17)}</button>
-    </div>${editor}`;
+      ${editor}
+    </div>`;
   }).join('');
 
-  el.innerHTML = `${warn}
+  el.innerHTML = `${header}${warn}
   <section class="auto-card">
-    <div class="card-head">
+    <div class="card-head-row">
       <div class="card-id">
-        <div class="card-icon ${c.enabled?'lit':''}">${svg('thermometer',25,c.enabled?t.accent:t.faint)}</div>
+        <div class="card-icon ${c.enabled?'lit':''}">${svg('thermometer',24,c.enabled?C.accent:C.faint)}</div>
         <div>
           <div class="card-title">Клімат-контроль</div>
-          <div class="card-sub">Автоматично тримає задану температуру в кімнаті</div>
+          <div class="card-sub">Тримає задану температуру</div>
         </div>
       </div>
-      <button class="sw-btn" onclick="climToggle()"><span class="sw ${c.enabled?'on':''}"><span class="knob"></span></span></button>
+      <button class="sw-btn" onclick="climToggle()">${sw(!!c.enabled)}</button>
     </div>
     ${c.enabled ? `
-    <div class="auto-body">
-      ${sliders}
+    <div class="clim-body">
+      ${steps}
       <div>
-        <div class="clim-label" style="margin-bottom:11px">Режим охолодження</div>
-        <div class="chips">${modes}</div>
+        <div class="group-label">Режим</div>
+        ${modeSeg(c.mode, 'climMode', false)}
       </div>
       <div class="opt-row">
         <div>
           <div class="opt-title">Вимикати після охолодження</div>
-          <div class="opt-sub">Щоб не працював даремно, коли в кімнаті стало прохолодно</div>
+          <div class="opt-sub">Щоб не працював даремно</div>
         </div>
-        <button class="sw-btn" onclick="climSet('auto_off',${!c.auto_off})"><span class="sw ${c.auto_off?'on':''}"><span class="knob"></span></span></button>
+        <button class="sw-btn" onclick="climSet('auto_off',${!c.auto_off})">${sw(!!c.auto_off)}</button>
       </div>
     </div>` : ''}
   </section>
 
   <section class="auto-card">
-    <div class="card-head" style="margin-bottom:6px">
+    <div class="card-head-row">
       <div class="card-id">
-        <div class="card-icon">${svg('calendar',24,t.accent)}</div>
+        <div class="card-icon">${svg('calendar',23,C.accent)}</div>
         <div>
           <div class="card-title">Розклади</div>
           <div class="card-sub">Спрацьовують у заданий час</div>
         </div>
       </div>
-      <button class="add-btn" onclick="schedAdd()">${svg('plus',16,t.accent)}<span>Додати</span></button>
+      <button class="add-btn" onclick="schedAdd()">${svg('plus',16,C.accent)}<span>Додати</span></button>
     </div>
     ${scheds.length ? `<div class="sched-list">${rows}</div>`
       : '<div class="empty-note">Ще немає розкладів. Натисніть «Додати», щоб створити перший.</div>'}
   </section>`;
-  bindSliders(el);
 }
 
+function chip(label, active, onclick) {
+  return `<button class="chip ${active?'active':''}" onclick="${onclick}">${esc(label)}</button>`;
+}
 function schedEditor(r, i) {
   const [hh, mm] = (r.time || '08:00').split(':');
   const pad = n => String(n).padStart(2, '0');
@@ -613,8 +685,8 @@ function schedEditor(r, i) {
   const devOpts = editDevices().map(d=>`<option value="${d.id}" ${r.device===d.id?'selected':''}>${esc(d.name)} · ${esc(d.room)}</option>`).join('');
   const st = r.set || {};
   const isOff = r.action === 'off';
-  const modeOpts = MODES.map(([k,l])=>`<option value="${k}" ${st.mode===k?'selected':''}>${l}</option>`).join('');
-  const fanOpts = [[0,'Авто'],[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']].map(([v,l])=>`<option value="${v}" ${st.fan===v?'selected':''}>${l}</option>`).join('');
+  const modeOpts = MODES.map(([k])=>`<option value="${k}" ${st.mode===k?'selected':''}>${MODE_LABELS[k]}</option>`).join('');
+  const fanO = FAN_OPTS.map(([v,l])=>`<option value="${v}" ${st.fan===v?'selected':''}>${l}</option>`).join('');
   return `
   <div class="sched-editor">
     <div class="row">
@@ -630,19 +702,28 @@ function schedEditor(r, i) {
     </div>
     ${isOff ? '' : `
     <div class="row">
-      <span class="clim-label">режим</span>
+      <span>режим</span>
       <select class="sel" onchange="schedSetField(${i},'mode',this.value)">${modeOpts}</select>
       <input class="num-in mono" type="number" min="16" max="30" value="${st.temp ?? 24}" onchange="schedSetField(${i},'temp',+this.value)"> °C
-      <span class="clim-label">вент.</span>
-      <select class="sel" onchange="schedSetField(${i},'fan',+this.value)">${fanOpts}</select>
+      <span>вент.</span>
+      <select class="sel" onchange="schedSetField(${i},'fan',+this.value)">${fanO}</select>
       ${chip('🤫 Тихо', !!st.quiet, `schedSetField(${i},'quiet',${!st.quiet})`)}
       ${chip('🌙 Сон', !!st.sleep, `schedSetField(${i},'sleep',${!st.sleep})`)}
     </div>`}
   </div>`;
 }
 
-function climToggle() { (S.rules.climate ??= {}).enabled = !S.rules.climate.enabled; saveRules(); renderAuto(); }
+// Клімат-контроль
+function climToggle() { const c = (S.rules.climate ??= {}); c.enabled = !c.enabled; saveRules(); renderAuto(); }
 function climSet(k, v) { (S.rules.climate ??= {})[k] = v; saveRules(); renderAuto(); }
+function climMode(k) { climSet('mode', k); }
+function climStep(field, delta, min, max) {
+  const c = (S.rules.climate ??= {});
+  const cur = c[field] != null ? c[field] : min;
+  c[field] = Math.min(max, Math.max(min, cur + delta));
+  saveRules(); renderAuto();
+}
+// Розклади
 function schedToggle(i) { const r = S.rules.schedules[i]; r.enabled = r.enabled === false; saveRules(); renderAuto(); }
 function schedDel(i) { S.rules.schedules.splice(i, 1); if (S.editIdx === i) S.editIdx = null; saveRules(); renderAuto(); }
 function schedEdit(i) { S.editIdx = S.editIdx === i ? null : i; renderAuto(); }
@@ -661,66 +742,21 @@ function schedField(i, k, v) {
 }
 function schedSetField(i, k, v) { (S.rules.schedules[i].set ??= {})[k] = v; saveRules(); renderAuto(); }
 
-// ── Слайдери (перетягування) ──
-function bindSliders(scope) {
-  scope.querySelectorAll('[data-slider]').forEach(el => {
-    el.addEventListener('pointerdown', e => {
-      S.dragging = true;
-      try { el.setPointerCapture(e.pointerId); } catch (_) {}
-      sliderMove(el, e);
-      const move = ev => sliderMove(el, ev);
-      const up = ev => {
-        S.dragging = false;
-        el.removeEventListener('pointermove', move);
-        el.removeEventListener('pointerup', up);
-        sliderCommit(el, ev);
-      };
-      el.addEventListener('pointermove', move);
-      el.addEventListener('pointerup', up);
-    });
-  });
-}
-function sliderValue(el, e) {
-  const r = el.getBoundingClientRect();
-  const ratio = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-  const min = +el.dataset.min, max = +el.dataset.max;
-  return Math.round(min + ratio * (max - min));
-}
-function sliderMove(el, e) {
-  const v = sliderValue(el, e);
-  const min = +el.dataset.min, max = +el.dataset.max;
-  const pct = ((v - min) / (max - min)) * 100;
-  el.querySelector('.slider-fill').style.width = pct + '%';
-  el.querySelector('.slider-knob').style.left = pct + '%';
-  const id = el.dataset.slider;
-  if (id === 'ac-temp') { const lbl = $('#acTempVal'); if (lbl) lbl.innerHTML = `${v}<span class="deg">°</span>`; }
-  if (id.startsWith('clim-')) { const lbl = $('#climVal-' + id.slice(5)); if (lbl) lbl.textContent = v + '°'; }
-  el._val = v;
-}
-function sliderCommit(el) {
-  const v = el._val;
-  if (v == null) return;
-  const id = el.dataset.slider;
-  if (id === 'ac-temp') { const ac = acDev(); if (ac) setDev(ac.id, { temp: v }); }
-  else if (id.startsWith('clim-')) { if (!S.rules) return; (S.rules.climate ??= {})[id.slice(5)] = v; saveRules(); renderAuto(); }
-}
-
 // ── Рендер усього ──
 function renderAll() {
-  renderStats();
+  renderInfoCards();
   renderAcCard();
-  renderGrid();
+  renderQuickAccess();
   if (S.tab === 'auto') renderAuto();
 }
 
 // ── Старт ──
-$('#logoIcon').innerHTML = svg('house', 21, '#fff');
-$('#themeBtnSide').onclick = toggleTheme;
-$('#themeBtnTop').onclick = toggleTheme;
-applyTheme();
 renderNav();
-renderStatus();
 renderAll();          // одразу показуємо картку в стані «Очікую стан…»
 tickClock();
 setInterval(tickClock, 1000);
+showLoader();         // лоудер видно, доки не буде реального «наживо»-з'єднання
 NET.start();          // HTTP: poll /api кожні 5 с; MQTT: підключення до брокера
+
+// Далі лоудер вмикає/вимикає лише updateLoader() за реальним станом зв'язку
+// (setConn у HTTP-poll; connect/close/status/state у MQTT). Жодного таймауту-«здатися».

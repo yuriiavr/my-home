@@ -167,6 +167,22 @@ class GreeAC(Device):
         resp = self._packet({"cols": cols, "mac": self.mac, "t": "status"})
         return dict(zip(resp["cols"], resp["dat"]))
 
+    def _rediscover(self) -> bool:
+        """Кондей змінив IP (DHCP)? Знайти його в мережі за MAC (broadcast-скан).
+        Тому резервувати IP у роутері не обов'язково."""
+        target = self.mac.replace(":", "").lower()
+        bcast = self.ip.rsplit(".", 1)[0] + ".255"
+        try:
+            for d in scan(bcast):
+                if (d.get("mac") or "").replace(":", "").lower() == target:
+                    if d["ip"] != self.ip:
+                        print(f"[GREE] {self.name}: новий IP {d['ip']}")
+                    self.ip = d["ip"]
+                    return True
+        except Exception:
+            pass
+        return False
+
     # -- інтерфейс Device --
     async def apply(self) -> None:
         s = self.state
@@ -191,7 +207,16 @@ class GreeAC(Device):
             1 if s.get("health") else 0,          # іонізатор
         ]
         import asyncio
-        await asyncio.to_thread(self._cmd_sync, opts, vals)
+        try:
+            await asyncio.to_thread(self._cmd_sync, opts, vals)
+        except Exception:
+            if await asyncio.to_thread(self._rediscover):
+                try:
+                    await asyncio.to_thread(self._cmd_sync, opts, vals)
+                except Exception as e:
+                    print(f"[GREE] apply {self.name}: {type(e).__name__}")
+            else:
+                print(f"[GREE] apply {self.name}: не дістукався")
         print(f"[GREE] {self.name} -> {s}")
 
     async def refresh(self) -> None:
@@ -200,7 +225,12 @@ class GreeAC(Device):
         try:
             d = await asyncio.to_thread(self._status_sync)
         except Exception:
-            return  # не дістукались — лишаємо попередній стан
+            if not await asyncio.to_thread(self._rediscover):
+                return  # не дістукались — лишаємо попередній стан
+            try:
+                d = await asyncio.to_thread(self._status_sync)
+            except Exception:
+                return
         self.state["on"] = bool(d.get("Pow", 0))
         self.state["mode"] = MODES_BACK.get(d.get("Mod", 1), "cool")
         self.state["temp"] = d.get("SetTem", 24)
@@ -214,8 +244,6 @@ class GreeAC(Device):
         self.state["sleep"] = bool(d.get("SwhSlp", 0))
         self.state["xfan"] = bool(d.get("Blo", 0))
         self.state["health"] = bool(d.get("Health", 0))
-        # Температура В КІМНАТІ з датчика кондиціонера
-        # (у протоколі зі зсувом +40: 65 означає 25°C)
-        t = d.get("TemSen")
-        if t is not None and t > 0:
-            self.state["room_temp"] = t - 40 if t > 40 else t
+        # room_temp БІЛЬШЕ НЕ беремо з кондиціонера — істина лише з датчика DHT22.
+        # Хаб перезаписує room_temp показником датчика (див. poller у main.py).
+        # (Датчик кондея неточний, тож ігноруємо його TemSen навмисне.)

@@ -5,6 +5,7 @@ firmware/.pio/
 # СЕКРЕТИ: WiFi/MQTT/OTA/ключ кондиціонера — НІКОЛИ не комітити!
 # (скопіюй відповідний *.example.* файл і заповни)
 firmware/src/secrets.h
+firmware-sensor/src/secrets.h
 hub/home_secrets.py
 deploy-cloud/config.js
 
@@ -15,6 +16,22 @@ __pycache__/
 
 # Runtime-дані хаба (правила живуть на платі, це лише локальний кеш)
 hub/automations.json
+hub/watch_history.json
+hub/*.log
+# Тестові записи голосу/озвучки
+hub/_*.mp3
+hub/_*.wav
+
+# Модель розпізнавання мови (137 МБ, качається скриптом — див. voice.py)
+hub/models/
+
+# Голосовий кінотеатр: браузерний профіль, адблок-розширення, база доменів
+hub/browser-profile*/
+hub/ublock/
+hub/adblock/
+hub/adhosts_domains.txt
+hub/probe_*.py
+hub/diag_*.py
 
 # IDE / система
 .vscode/

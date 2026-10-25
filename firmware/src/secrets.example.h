@@ -25,3 +25,6 @@
 
 // ── Пароль бездротової прошивки (ArduinoOTA) — вигадай свій ──
 #define SECRET_OTA_PASS "REPLACE_OTA_PASS"
+
+// ── Адреса хаба (куди мікрофон INMP441 шле записаний голос) ──
+#define SECRET_HUB_URL "http://192.168.0.109:8000/api/voice"

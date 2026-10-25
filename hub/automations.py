@@ -98,16 +98,13 @@ class Engine:
                   f"УВІМКНУВ {c.get('target')}°C")
 
         elif (d.state.get("on") and c.get("auto_off")
-              and self._climate_on_by_us
               and room <= c.get("off_below", 23)):
+            # Термостат: охолов до off_below -> вимикаємо, НЕЗАЛЕЖНО хто ввімкнув
+            # (раніше вимикали лише те, що самі ввімкнули — це збивало з пантелику).
             d.state["on"] = False
             await d.apply()
             self._climate_on_by_us = False
             print(f"[AUTO] 🌡 {room}°C <= {c.get('off_below')}°C -> ВИМКНУВ")
-
-        if not d.state.get("on"):
-            # людина вимкнула вручну — не сперечаємось
-            self._climate_on_by_us = False
 
     # ── Розклади ───────────────────────────────────────────────────
     async def _schedules(self) -> None:

@@ -24,11 +24,13 @@
 #include <IRutils.h>
 #include <ir_Gree.h>   // рідний протокол Gree (= Cooper&Hunter)
 #include <IRac.h>      // універсальний відправник для "полювання" на протокол
+#include <DHTesp.h>    // датчик температури й вологості DHT22
 #include <time.h>
 #include <ArduinoOTA.h>   // бездротова прошивка (firmware + файлова система)
 #include "gree_ac.h"      // WiFi-клієнт кондиціонера (UDP 7000, AES-GCM)
 #include "auto_engine.h"  // автономні автоматизації (клімат + розклади)
 #include "mqtt_client.h"  // захищений хмарний MQTT (керування з інтернету)
+#include "voice_mic.h"    // мікрофон INMP441 (голос -> хаб) з активацією «Адольф»
 #include "secrets.h"      // паролі/ключі (НЕ в git; див. secrets.example.h)
 
 // ======================= НАЛАШТУВАННЯ =======================
@@ -39,7 +41,14 @@ const char* WIFI_PASS = SECRET_WIFI_PASS;
 // 2) Ноги (GPIO), куди підключені компоненти:
 const uint16_t kRecvPin  = 15;  // OUT ІЧ-приймача (VS1838B) -> GPIO15
 const uint16_t kIrLedPin = 4;   // ІЧ-світлодіод (через транзистор) -> GPIO4
+const uint8_t  kDhtPin   = 27;  // DATA датчика DHT22 -> GPIO27
 // ============================================================
+
+// Датчик температури й вологості DHT22 (читаємо раз на ~3 с у loop)
+DHTesp dht;
+float g_temp = NAN;    // °C, остання прочитана температура (NAN = ще нема)
+float g_humid = NAN;   // %, остання прочитана вологість
+const char* g_dhtStatus = "?";  // остання діагностика датчика (OK/Timeout/Checksum)
 
 // Великий буфер, щоб ловити довгі сигнали кондиціонерів:
 const uint16_t kCaptureBufferSize = 2048;  // збільшено: запас проти шуму й довгих AC-протоколів
@@ -340,6 +349,11 @@ void setup() {
   irrecv.setUnknownThreshold(12);  // тимчасово нижче: щоб бачити луну від власного діода
   irrecv.enableIRIn(true);         // true = внутрішній підтягувач (діагностика обриву лінії)
 
+  dht.setup(kDhtPin, DHTesp::DHT22);  // датчик температури й вологості
+  pinMode(kDhtPin, INPUT_PULLUP);     // підтягувач (рятує, якщо на платі нема резистора)
+
+  voiceMicInit();                     // мікрофон INMP441 (I2S)
+
   if (!LittleFS.begin(true)) Serial.println("⚠ LittleFS не змонтувався");
   if (!LittleFS.exists(CMD_DIR)) LittleFS.mkdir(CMD_DIR);
 
@@ -422,6 +436,50 @@ void setup() {
                  "\",\"freq\":" + (int)(doc["freq"] | 38) +
                  ",\"len\":" + doc["raw"].as<JsonArray>().size() + "}";
     server.send(200, "application/json", out);
+  });
+  // 🌡️ Температура й вологість з DHT22 (останнє прочитане в loop).
+  // {"ok":true,"temp":23.4,"humid":47.0}  або ok:false, якщо датчик мовчить.
+  server.on("/climate", HTTP_GET, []() {
+    if (isnan(g_temp) || isnan(g_humid)) {
+      String s = String("{\"ok\":false,\"status\":\"") + g_dhtStatus +
+                 "\",\"pin\":" + kDhtPin + "}";
+      server.send(200, "application/json", s);
+      return;
+    }
+    char buf[80];
+    snprintf(buf, sizeof(buf), "{\"ok\":true,\"temp\":%.1f,\"humid\":%.1f}",
+             g_temp, g_humid);
+    server.send(200, "application/json", buf);
+  });
+  // 🔦 ДІАГНОСТИКА ІЧ-ДІОДА: серія спалахів 60мс-увімк / 60мс-вимк (несуча 38кГц).
+  // Наведи камеру телефона на діод — робочий діод дає фіолетово-біле мигання.
+  server.on("/irblink", HTTP_POST, []() {
+    uint16_t seq[40];
+    for (int i = 0; i < 40; i++) seq[i] = 60000;  // 20 спалахів по 60мс
+    irsend.sendRaw(seq, 40, 38);
+    server.send(200, "application/json", "{\"ok\":true}");
+  });
+  // 🎤 ДІАГНОСТИКА МІКРОФОНА: пік гучності з останнього запиту, фон, поріг.
+  // Роби ГУЧНО звук між двома запитами -> побачиш, чи мікрофон дає сигнал.
+  server.on("/mic", HTTP_GET, []() {
+    int peak = 0, sr = 0; float fl = 0;
+    voiceMicStats(&peak, &fl, &sr);
+    char b[140];
+    snprintf(b, sizeof(b),
+      "{\"peak\":%d,\"floor\":%.0f,\"threshold\":%.0f,\"sample_rate\":%d}",
+      peak, fl, voiceMicThreshold(), sr);
+    server.send(200, "application/json", b);
+  });
+  // Крутити поріг спрацювання по Wi-Fi (щоб не перезаливати): /micset?mult=6&base=3000
+  server.on("/micset", HTTP_GET, []() {
+    float m = server.hasArg("mult") ? server.arg("mult").toFloat() : 0;
+    float base = server.hasArg("base") ? server.arg("base").toFloat() : -1;
+    voiceMicSetThreshold(m, base);
+    if (server.hasArg("gain")) voiceMicSetGain(server.arg("gain").toInt());
+    if (server.hasArg("enable")) voiceMicSetEnabled(server.arg("enable").toInt() != 0);
+    char b[48];
+    snprintf(b, sizeof(b), "{\"ok\":true,\"mic_on\":%s}", voiceMicIsEnabled() ? "true" : "false");
+    server.send(200, "application/json", b);
   });
   // ДІАГНОСТИКА: вольтметр на IO34 (АЦП). ~4095 = 3.3В+, ~0 = нема напруги
   server.on("/adc", HTTP_GET, []() {
@@ -611,6 +669,23 @@ void loop() {
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("⚠ WiFi відпав — перепідключаюсь...");
       WiFi.reconnect();
+    }
+  }
+
+  // 🎤 Мікрофон: слухаємо голос; на мовлення — запис і відправка на хаб.
+  // (Блокує loop лише на час самого запису фрази — кілька секунд.)
+  voiceMicLoop();
+
+  // 🌡️ DHT22: читаємо раз на ~3 с (мінімум для DHT22 — 2 с). Вдале значення
+  // запам'ятовуємо, бо інколи датчик віддає NAN — тоді лишаємо попереднє.
+  static unsigned long lastDht = 0;
+  if (millis() - lastDht > 3000) {
+    lastDht = millis();
+    TempAndHumidity th = dht.getTempAndHumidity();
+    g_dhtStatus = dht.getStatusString();   // "OK" / "TIMEOUT_ERROR" / "CHECKSUM_ERROR"
+    if (!isnan(th.temperature) && !isnan(th.humidity)) {
+      g_temp = th.temperature;
+      g_humid = th.humidity;
     }
   }
 
